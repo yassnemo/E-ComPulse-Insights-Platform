@@ -30,9 +30,9 @@ class SparkSessionTest extends AnyFunSuite with Matchers with BeforeAndAfterAll 
     spark should not be null
     spark.version should not be empty
   }
-
   test("Basic DataFrame operations") {
-    import spark.implicits._
+    val sparkSession = spark
+    import sparkSession.implicits._
     
     val data = Seq(
       ("user1", "page_view", "2023-01-01", 1),
@@ -48,9 +48,9 @@ class SparkSessionTest extends AnyFunSuite with Matchers with BeforeAndAfterAll 
     val userEvents = df.filter($"user_id" === "user1")
     userEvents.count() shouldEqual 2
   }
-
   test("Event aggregation logic") {
-    import spark.implicits._
+    val sparkSession = spark
+    import sparkSession.implicits._
     
     val events = Seq(
       ("user1", "page_view", 100L),
@@ -73,9 +73,9 @@ class SparkSessionTest extends AnyFunSuite with Matchers with BeforeAndAfterAll 
     )
     user1PageViews.get.getLong(2) shouldEqual 2
   }
-
   test("JSON parsing simulation") {
-    import spark.implicits._
+    val sparkSession = spark
+    import sparkSession.implicits._
     
     val jsonData = Seq(
       """{"user_id": "user1", "event_type": "page_view", "timestamp": 1234567890}""",
