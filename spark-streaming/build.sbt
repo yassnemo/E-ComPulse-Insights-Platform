@@ -1,6 +1,16 @@
+// Enable plugins
+enablePlugins(JavaAppPackaging, DockerPlugin)
+
 name := "ecompulse-streaming"
 version := "1.0.0"
 scalaVersion := "2.12.15"
+
+// Coverage settings
+coverageEnabled := true
+coverageMinimumStmtTotal := 80
+coverageFailOnMinimum := false
+coverageHighlighting := true
+coverageExcludedPackages := ".*Main.*;.*App.*"
 
 val sparkVersion = "3.4.1"
 val deltaVersion = "2.4.0"

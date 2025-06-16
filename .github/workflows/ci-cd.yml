@@ -43,21 +43,48 @@ jobs:
       if: matrix.component == 'web-tracker'
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-    
-    - name: Setup Java
+        node-version: '18'    - name: Setup Java
       if: matrix.component == 'spark-streaming'
       uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
     
-    - name: Cache dependencies
+    - name: Setup SBT
+      if: matrix.component == 'spark-streaming'
+      run: |
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
+        curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+        sudo apt-get update
+        sudo apt-get install sbt
+    
+    - name: Cache SBT dependencies
+      if: matrix.component == 'spark-streaming'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.sbt
+          ~/.ivy2/cache
+          ~/.coursier/cache
+        key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+        restore-keys: |
+          ${{ runner.os }}-sbt-
+      - name: Cache Python dependencies
       if: matrix.component == 'synthetic-generator'
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+    
+    - name: Cache Node.js dependencies
+      if: matrix.component == 'web-tracker'
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
     
     - name: Install Python dependencies
       if: matrix.component == 'synthetic-generator'
@@ -82,13 +109,36 @@ jobs:
       if: matrix.component == 'web-tracker'
       run: |
         cd data-ingestion/web-tracker
-        npm test
-    
-    - name: Run Scala tests
+        npm test    - name: Run Scala tests
       if: matrix.component == 'spark-streaming'
       run: |
         cd spark-streaming
+        echo "Checking SBT installation..."
+        sbt sbtVersion
+        echo "Checking Java version..."
+        java -version
+        echo "Cleaning and compiling..."
+        sbt clean compile
+        echo "Running tests..."
         sbt test
+      env:
+        SBT_OPTS: "-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
+    
+    - name: Generate Scala test coverage
+      if: matrix.component == 'spark-streaming'
+      run: |
+        cd spark-streaming
+        echo "Generating coverage report..."
+        sbt coverage test coverageReport
+      env:
+        SBT_OPTS: "-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
+    
+    - name: Upload Scala coverage to Codecov
+      if: matrix.component == 'spark-streaming'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./spark-streaming/target/scala-*/scoverage-report/cobertura.xml
+        flags: spark-streaming
     
     - name: Upload coverage to Codecov
       if: matrix.component == 'synthetic-generator'

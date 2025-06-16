@@ -83,3 +83,56 @@ spark-submit \
 - Business KPIs (conversion rates, revenue)
 - Data quality metrics (schema violations, null rates)
 - Performance metrics (latency, throughput)
+
+## Testing
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+sbt test
+
+# Run tests with coverage
+sbt coverage test coverageReport
+
+# Run specific test
+sbt "testOnly com.ecompulse.streaming.EventEnrichmentJobTest"
+
+# Clean and rebuild
+sbt clean compile test
+```
+
+### Test Structure
+
+```
+src/test/scala/
+├── com/ecompulse/streaming/
+│   ├── EventEnrichmentJobTest.scala    # Event enrichment logic tests
+│   ├── SessionAnalyticsJobTest.scala   # Session analytics tests
+│   └── SparkSessionTest.scala          # Spark DataFrame operations tests
+└── resources/
+    └── application-test.conf            # Test configuration
+```
+
+### CI/CD Testing
+
+The GitHub Actions pipeline automatically:
+1. Sets up SBT and Java 11
+2. Caches SBT dependencies for faster builds
+3. Runs `sbt clean compile test`
+4. Generates coverage reports
+5. Uploads coverage to Codecov
+
+### Test Requirements
+
+- Java 11
+- SBT 1.9.6
+- Scala 2.12.15
+- Apache Spark 3.4.1 (test scope)
+
+### Adding New Tests
+
+1. Create test files in `src/test/scala/com/ecompulse/streaming/`
+2. Extend `AnyFunSuite` with `Matchers`
+3. Use `BeforeAndAfterAll` for Spark session setup if needed
+4. Follow the naming convention: `*Test.scala`

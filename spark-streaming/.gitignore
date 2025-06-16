@@ -1,0 +1,57 @@
+# SBT build artifacts
+target/
+project/target/
+project/project/
+
+# SBT specific
+.history
+.cache
+.lib/
+dist/*
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.project
+.classpath
+.cache-main
+.scala_dependencies
+.worksheet
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Coverage reports
+target/scala-*/scoverage-data/
+target/scala-*/scoverage-report/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Assembly JARs
+*-assembly.jar
+
+# Application specific
+checkpoint/
+output/
