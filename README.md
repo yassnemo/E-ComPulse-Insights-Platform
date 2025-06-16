@@ -46,7 +46,8 @@ graph TB
     MOBILE --> PROXY
     SYNTH --> KAFKA
     PROXY --> KAFKA
-    KAFKA --> SPARK    SPARK --> REDIS
+    KAFKA --> SPARK
+    SPARK --> REDIS
     SPARK --> S3
     AIRFLOW --> SPARK
     AIRFLOW --> GE
