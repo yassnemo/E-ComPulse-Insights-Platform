@@ -2,6 +2,7 @@ package com.ecompulse.streaming
 
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
 import org.apache.spark.sql.types._
 import org.apache.log4j.{Level, Logger}
@@ -168,11 +169,9 @@ object EventEnrichmentJob {
       .withColumn("day_of_week", dayofweek(col("timestamp")))
       .withColumn("is_weekend", when(dayofweek(col("timestamp")).isin(1, 7), true).otherwise(false))
       .withColumn("event_revenue", calculateEventRevenue(col("event_type"), col("properties"), col("price")))
-      .withColumn("customer_value_segment", calculateCustomerSegment(col("total_spent"), col("total_orders")))
-      .withColumn("session_sequence", 
+      .withColumn("customer_value_segment", calculateCustomerSegment(col("total_spent"), col("total_orders")))      .withColumn("session_sequence", 
         row_number().over(
-          window(col("timestamp"), "30 minutes")
-            .partitionBy(col("session_id"))
+          Window.partitionBy(col("session_id"))
             .orderBy(col("timestamp"))
         )
       )
