@@ -220,8 +220,9 @@ object SessionAnalyticsJob {
       .trigger(Trigger.ProcessingTime("30 seconds"))
       .start()
   }
-
   def writeConversionFunnel(df: DataFrame): StreamingQuery = {
+    import df.sparkSession.implicits._
+    
     val funnelJson = df
       .select(
         col("window.start").as("window_start"),
