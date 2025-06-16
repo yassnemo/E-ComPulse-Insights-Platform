@@ -1,0 +1,36 @@
+apiVersion: v2
+name: ecompulse-platform
+description: A Helm chart for E-ComPulse Insights Platform - Real-time e-commerce analytics platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - analytics
+  - ecommerce
+  - kafka
+  - spark
+  - real-time
+  - streaming
+home: https://github.com/ecompulse/insights-platform
+sources:
+  - https://github.com/ecompulse/insights-platform
+maintainers:
+  - name: E-ComPulse Team
+    email: platform@ecompulse.com
+dependencies:
+  - name: kafka
+    version: "0.21.2"
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+  - name: redis
+    version: "17.3.14"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: prometheus
+    version: "15.18.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+  - name: grafana
+    version: "6.44.11"
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled

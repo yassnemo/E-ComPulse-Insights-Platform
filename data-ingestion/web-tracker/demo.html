@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ComPulse Tracker Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .demo-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .logs {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>E-ComPulse Web Tracker Demo</h1>
+    
+    <div class="demo-section">
+        <h2>Tracker Status</h2>
+        <p><strong>User ID:</strong> <span id="user-id">Loading...</span></p>
+        <p><strong>Session ID:</strong> <span id="session-id">Loading...</span></p>
+        <p><strong>Events Sent:</strong> <span id="events-count">0</span></p>
+        
+        <button onclick="tracker.enablePrivacyMode()">Enable Privacy Mode</button>
+        <button onclick="tracker.disablePrivacyMode()">Disable Privacy Mode</button>
+        <button onclick="tracker.flush()">Flush Events</button>
+    </div>
+
+    <div class="demo-section">
+        <h2>Manual Event Tracking</h2>
+        <button onclick="trackPageView()">Track Page View</button>
+        <button onclick="trackCustomEvent()">Track Custom Event</button>
+        <button onclick="simulateUserJourney()">Simulate User Journey</button>
+    </div>
+
+    <div class="demo-section">
+        <h2>E-commerce Demo</h2>
+        <div class="product-grid">
+            <div class="product-card" data-product-id="prod-001">
+                <h3>Wireless Headphones</h3>
+                <p>Price: $149.99</p>
+                <button onclick="viewProduct('prod-001', 'Wireless Headphones', 149.99)">View Product</button>
+                <button onclick="addToCart('prod-001', 'Wireless Headphones', 149.99)">Add to Cart</button>
+            </div>
+            
+            <div class="product-card" data-product-id="prod-002">
+                <h3>Smart Watch</h3>
+                <p>Price: $299.99</p>
+                <button onclick="viewProduct('prod-002', 'Smart Watch', 299.99)">View Product</button>
+                <button onclick="addToCart('prod-002', 'Smart Watch', 299.99)">Add to Cart</button>
+            </div>
+            
+            <div class="product-card" data-product-id="prod-003">
+                <h3>Laptop Stand</h3>
+                <p>Price: $79.99</p>
+                <button onclick="viewProduct('prod-003', 'Laptop Stand', 79.99)">View Product</button>
+                <button onclick="addToCart('prod-003', 'Laptop Stand', 79.99)">Add to Cart</button>
+            </div>
+        </div>
+        
+        <button onclick="simulatePurchase()" style="background: #28a745;">Complete Purchase</button>
+        <button onclick="clearCart()" style="background: #dc3545;">Clear Cart</button>
+    </div>
+
+    <div class="demo-section">
+        <h2>Event Logs</h2>
+        <div id="logs" class="logs">
+            Tracker initializing...<br>
+        </div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script src="ecompulse-tracker.js"></script>
+    <script>
+        // Initialize tracker with demo configuration
+        const tracker = new EComPulseTracker({
+            kafkaRestProxy: 'http://localhost:8082', // Local Kafka REST Proxy
+            topic: 'ecommerce-events',
+            environment: 'demo',
+            debugMode: true,
+            autoTrack: true,
+            batchSize: 5,
+            flushInterval: 3000
+        });
+
+        // Demo state
+        let cartItems = [];
+        let eventCount = 0;
+
+        // Update UI with tracker info
+        document.getElementById('user-id').textContent = tracker.getUserId();
+        document.getElementById('session-id').textContent = tracker.getSessionId();
+
+        // Override tracker log method to show in UI
+        const originalLog = tracker.log;
+        tracker.log = function(message, data = {}) {
+            originalLog.call(this, message, data);
+            logToUI(`${new Date().toLocaleTimeString()} - ${message}`, data);
+            eventCount++;
+            document.getElementById('events-count').textContent = eventCount;
+        };
+
+        function logToUI(message, data = {}) {
+            const logs = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `${message} ${Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : ''}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // Demo functions
+        function trackPageView() {
+            tracker.trackPageView({
+                page_category: 'demo',
+                custom_property: 'manual_page_view'
+            });
+        }
+
+        function trackCustomEvent() {
+            tracker.trackEvent('demo_custom_event', {
+                demo_property: 'custom_value',
+                timestamp_demo: Date.now()
+            });
+        }
+
+        function viewProduct(productId, productName, price) {
+            tracker.trackProductView(productId, {
+                product_name: productName,
+                product_category: 'electronics',
+                price: price,
+                currency: 'USD',
+                brand: 'DemoStore'
+            });
+        }
+
+        function addToCart(productId, productName, price) {
+            // Add to local cart state
+            const existingItem = cartItems.find(item => item.product_id === productId);
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cartItems.push({
+                    product_id: productId,
+                    product_name: productName,
+                    price: price,
+                    quantity: 1
+                });
+            }
+
+            // Calculate cart total
+            const cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+
+            // Track add to cart event
+            tracker.trackAddToCart(productId, {
+                product_name: productName,
+                product_category: 'electronics',
+                price: price,
+                quantity: 1,
+                currency: 'USD',
+                cart_total: cartTotal,
+                cart_item_count: cartItems.length
+            });
+
+            logToUI(`Added ${productName} to cart. Cart total: $${cartTotal.toFixed(2)}`);
+        }
+
+        function simulatePurchase() {
+            if (cartItems.length === 0) {
+                alert('Cart is empty! Add some items first.');
+                return;
+            }
+
+            const orderId = 'order_' + Date.now();
+            const totalAmount = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+
+            tracker.trackPurchase(orderId, {
+                total_amount: totalAmount,
+                currency: 'USD',
+                items: cartItems,
+                payment_method: 'credit_card',
+                shipping_method: 'standard',
+                discount_amount: 0,
+                item_count: cartItems.length
+            });
+
+            logToUI(`Purchase completed! Order ID: ${orderId}, Total: $${totalAmount.toFixed(2)}`);
+            cartItems = []; // Clear cart
+        }
+
+        function clearCart() {
+            cartItems.forEach(item => {
+                tracker.trackRemoveFromCart(item.product_id, {
+                    product_name: item.product_name,
+                    quantity: item.quantity,
+                    price: item.price
+                });
+            });
+
+            cartItems = [];
+            logToUI('Cart cleared');
+        }
+
+        function simulateUserJourney() {
+            // Simulate a realistic user journey
+            setTimeout(() => viewProduct('prod-001', 'Wireless Headphones', 149.99), 500);
+            setTimeout(() => viewProduct('prod-002', 'Smart Watch', 299.99), 1500);
+            setTimeout(() => addToCart('prod-001', 'Wireless Headphones', 149.99), 3000);
+            setTimeout(() => viewProduct('prod-003', 'Laptop Stand', 79.99), 4500);
+            setTimeout(() => addToCart('prod-003', 'Laptop Stand', 79.99), 6000);
+            setTimeout(() => {
+                tracker.trackEvent('checkout_started', {
+                    cart_total: cartItems.reduce((total, item) => total + (item.price * item.quantity), 0),
+                    item_count: cartItems.length
+                });
+            }, 7500);
+            setTimeout(() => simulatePurchase(), 9000);
+
+            logToUI('Simulating user journey...');
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            eventCount = 0;
+            document.getElementById('events-count').textContent = eventCount;
+        }
+
+        // Simulate some initial activity
+        logToUI('Demo page loaded');
+        
+        // Track demo page view with custom properties
+        setTimeout(() => {
+            tracker.trackPageView({
+                page_type: 'demo',
+                demo_version: '1.0.0'
+            });
+        }, 1000);
+    </script>
+</body>
+</html>

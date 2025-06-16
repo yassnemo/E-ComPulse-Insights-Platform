@@ -1,0 +1,365 @@
+# Default values for ecompulse-platform
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  environment: production
+  region: us-west-2
+  domain: ecompulse.com
+  imageRegistry: "your-account.dkr.ecr.us-west-2.amazonaws.com"
+  
+# Namespace configuration
+namespace:
+  create: true
+  name: ecompulse
+
+# Data Ingestion Components
+syntheticGenerator:
+  enabled: true
+  name: synthetic-generator
+  replicaCount: 2
+  image:
+    repository: ecompulse/synthetic-generator
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  config:
+    eventsPerMinute: 50000
+    kafkaBootstrapServers: "kafka:9092"
+    redisUrl: "redis://redis:6379"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# Kafka REST Proxy
+kafkaProxy:
+  enabled: true
+  name: kafka-proxy
+  replicaCount: 2
+  image:
+    repository: confluentinc/cp-kafka-rest
+    tag: "7.4.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  service:
+    type: ClusterIP
+    port: 8082
+  
+  config:
+    kafkaBootstrapServers: "kafka:9092"
+    schemaRegistryUrl: "http://schema-registry:8081"
+
+# Spark Streaming Jobs
+sparkStreaming:
+  enabled: true
+  
+  enrichmentJob:
+    name: event-enrichment
+    replicaCount: 1
+    image:
+      repository: ecompulse/spark-enrichment
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+    
+    config:
+      sparkConf:
+        spark.executor.memory: "2g"
+        spark.executor.cores: "2"
+        spark.sql.streaming.checkpointLocation: "s3a://ecompulse-checkpoints/enrichment"
+  
+  sessionJob:
+    name: session-analytics
+    replicaCount: 1
+    image:
+      repository: ecompulse/spark-session
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+    
+    config:
+      sparkConf:
+        spark.executor.memory: "2g"
+        spark.executor.cores: "2"
+        spark.sql.streaming.checkpointLocation: "s3a://ecompulse-checkpoints/sessions"
+
+# Apache Airflow
+airflow:
+  enabled: true
+  name: airflow
+  
+  webserver:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  
+  scheduler:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  
+  worker:
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  
+  config:
+    executor: "CeleryExecutor"
+    coreV1ConfigMap: airflow-config
+    fernet_key: "your-fernet-key-here"
+    webserver_secret_key: "your-secret-key-here"
+
+# Kafka Configuration (External Dependency)
+kafka:
+  enabled: true
+  replicaCount: 3
+  
+  heapOpts: "-Xmx1G -Xms1G"
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: gp3
+  
+  zookeeper:
+    enabled: true
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: gp3
+  
+  metrics:
+    kafka:
+      enabled: true
+    jmx:
+      enabled: true
+
+# Redis Configuration (External Dependency)  
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  
+  master:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: gp3
+    
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: gp3
+
+# Monitoring Components
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 100Gi
+      storageClass: gp3
+    
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "1000m"
+  
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      storageClass: gp3
+
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: gp3
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  adminPassword: "admin"
+  
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  
+  hosts:
+    - host: api.ecompulse.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: kafka-proxy
+    - host: grafana.ecompulse.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: grafana
+    - host: airflow.ecompulse.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: airflow-webserver
+  
+  tls:
+    - secretName: ecompulse-tls
+      hosts:
+        - api.ecompulse.com
+        - grafana.ecompulse.com
+        - airflow.ecompulse.com
+
+# Security Configuration
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+podSecurityContext:
+  fsGroup: 2000
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Network Policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# ConfigMaps and Secrets
+configMaps:
+  sparkConfig:
+    spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    spark.hadoop.fs.s3a.aws.credentials.provider: "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
+
+secrets:
+  awsCredentials:
+    aws_access_key_id: ""
+    aws_secret_access_key: ""
+  
+  databaseCredentials:
+    username: ""
+    password: ""
+  
+  apiKeys:
+    kafka_api_key: ""
+    redis_password: ""
+
+# Resource Quotas
+resourceQuota:
+  enabled: true
+  requests:
+    cpu: "10"
+    memory: "20Gi"
+  limits:
+    cpu: "20"
+    memory: "40Gi"
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

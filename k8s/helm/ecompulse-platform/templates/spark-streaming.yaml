@@ -1,0 +1,113 @@
+{{- if .Values.sparkStreaming.enabled -}}
+# Event Enrichment Job
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.sparkStreaming.enrichmentJob.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ecompulse-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: stream-processing
+spec:
+  replicas: {{ .Values.sparkStreaming.enrichmentJob.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.sparkStreaming.enrichmentJob.name }}
+      {{- include "ecompulse-platform.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        app: {{ .Values.sparkStreaming.enrichmentJob.name }}
+        {{- include "ecompulse-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: stream-processing
+    spec:
+      {{- include "ecompulse-platform.podSecurityContext" . | nindent 6 }}
+      serviceAccountName: {{ include "ecompulse-platform.serviceAccountName" . }}
+      containers:
+      - name: {{ .Values.sparkStreaming.enrichmentJob.name }}
+        {{- include "ecompulse-platform.securityContext" . | nindent 8 }}
+        image: "{{ .Values.global.imageRegistry }}/{{ .Values.sparkStreaming.enrichmentJob.image.repository }}:{{ .Values.sparkStreaming.enrichmentJob.image.tag }}"
+        imagePullPolicy: {{ .Values.sparkStreaming.enrichmentJob.image.pullPolicy }}
+        env:
+        - name: SPARK_CONF_DIR
+          value: "/opt/spark/conf"
+        - name: SPARK_APPLICATION_ARGS
+          value: "--kafka-bootstrap-servers kafka:9092 --checkpoint-location {{ .Values.sparkStreaming.enrichmentJob.config.sparkConf.spark.sql.streaming.checkpointLocation }}"
+        {{- range $key, $value := .Values.sparkStreaming.enrichmentJob.config.sparkConf }}
+        - name: {{ $key | upper | replace "." "_" }}
+          value: "{{ $value }}"
+        {{- end }}
+        {{- include "ecompulse-platform.resources" .Values.sparkStreaming.enrichmentJob | nindent 8 }}
+        volumeMounts:
+        - name: spark-config
+          mountPath: /opt/spark/conf
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: spark-config
+        configMap:
+          name: spark-config
+      - name: tmp
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+---
+# Session Analytics Job
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.sparkStreaming.sessionJob.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ecompulse-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: stream-processing
+spec:
+  replicas: {{ .Values.sparkStreaming.sessionJob.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.sparkStreaming.sessionJob.name }}
+      {{- include "ecompulse-platform.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        app: {{ .Values.sparkStreaming.sessionJob.name }}
+        {{- include "ecompulse-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: stream-processing
+    spec:
+      {{- include "ecompulse-platform.podSecurityContext" . | nindent 6 }}
+      serviceAccountName: {{ include "ecompulse-platform.serviceAccountName" . }}
+      containers:
+      - name: {{ .Values.sparkStreaming.sessionJob.name }}
+        {{- include "ecompulse-platform.securityContext" . | nindent 8 }}
+        image: "{{ .Values.global.imageRegistry }}/{{ .Values.sparkStreaming.sessionJob.image.repository }}:{{ .Values.sparkStreaming.sessionJob.image.tag }}"
+        imagePullPolicy: {{ .Values.sparkStreaming.sessionJob.image.pullPolicy }}
+        env:
+        - name: SPARK_CONF_DIR
+          value: "/opt/spark/conf"
+        - name: SPARK_APPLICATION_ARGS
+          value: "--kafka-bootstrap-servers kafka:9092 --checkpoint-location {{ .Values.sparkStreaming.sessionJob.config.sparkConf.spark.sql.streaming.checkpointLocation }}"
+        {{- range $key, $value := .Values.sparkStreaming.sessionJob.config.sparkConf }}
+        - name: {{ $key | upper | replace "." "_" }}
+          value: "{{ $value }}"
+        {{- end }}
+        {{- include "ecompulse-platform.resources" .Values.sparkStreaming.sessionJob | nindent 8 }}
+        volumeMounts:
+        - name: spark-config
+          mountPath: /opt/spark/conf
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: spark-config
+        configMap:
+          name: spark-config
+      - name: tmp
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+{{- end }}
