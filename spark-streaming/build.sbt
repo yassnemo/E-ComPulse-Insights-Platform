@@ -17,10 +17,10 @@ val deltaVersion = "2.4.0"
 val kafkaVersion = "3.5.0"
 
 libraryDependencies ++= Seq(
-  // Spark Core
-  "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
-  "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
+  // Spark Core - use "compile" for local development, "provided" for cluster
+  "org.apache.spark" %% "spark-core" % sparkVersion % "compile",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "compile", 
+  "org.apache.spark" %% "spark-streaming" % sparkVersion % "compile",
   
   // Spark Structured Streaming
   "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
