@@ -19,12 +19,14 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  ECR_REPOSITORY_BASE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
+  # ECR_REPOSITORY_BASE will be set dynamically in jobs that need it
+  # ECR_REPOSITORY_BASE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    
     strategy:
       matrix:
         component: [synthetic-generator, spark-streaming, web-tracker]
@@ -43,7 +45,9 @@ jobs:
       if: matrix.component == 'web-tracker'
       uses: actions/setup-node@v4
       with:
-        node-version: '18'    - name: Setup Java
+        node-version: '18'
+    
+    - name: Setup Java
       if: matrix.component == 'spark-streaming'
       uses: actions/setup-java@v4
       with:
@@ -70,7 +74,8 @@ jobs:
         key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
         restore-keys: |
           ${{ runner.os }}-sbt-
-      - name: Cache Python dependencies
+    
+    - name: Cache Python dependencies
       if: matrix.component == 'synthetic-generator'
       uses: actions/cache@v3
       with:
@@ -109,7 +114,9 @@ jobs:
       if: matrix.component == 'web-tracker'
       run: |
         cd data-ingestion/web-tracker
-        npm test    - name: Run Scala tests
+        npm test
+    
+    - name: Run Scala tests
       if: matrix.component == 'spark-streaming'
       run: |
         cd spark-streaming
@@ -288,8 +295,7 @@ jobs:
           
           github.rest.issues.createComment({
             issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
+            owner: context.repo.owner,            repo: context.repo.repo,
             body: `## Terraform Plan 📋\n\n${body}`
           });
 
@@ -298,7 +304,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-images]
     if: github.ref == 'refs/heads/develop'
-    environment: staging
+    # environment: 
+    #   name: staging
+    #   url: https://staging.ecompulse.dev
     
     steps:
     - name: Checkout code
@@ -350,8 +358,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-images]
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
-    environment: production
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')    # environment: production
     
     steps:
     - name: Checkout code
@@ -404,12 +411,17 @@ jobs:
     
     - name: Notify Slack
       if: always()
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v1.24.0
       with:
-        status: ${{ job.status }}
-        channel: '#deployments'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        fields: repo,message,commit,author,action,eventName,ref,workflow
+        channel-id: 'deployments'
+        slack-message: |
+          Deployment Status: ${{ job.status }}
+          Repository: ${{ github.repository }}
+          Commit: ${{ github.sha }}
+          Author: ${{ github.actor }}
+          Workflow: ${{ github.workflow }}
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
   manual-deploy:
     name: Manual Deploy
